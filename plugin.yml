@@ -1,8 +1,8 @@
 name: SnowHalation
 main: ifteam\SnowHalation\SnowHalation
-version: 1.7-alpha
-author: ifteam
-api: [1.12.0]
+version: 1.8-alpha
+author: hm
+api: [2.0.0]
 
 commands:
  snow:

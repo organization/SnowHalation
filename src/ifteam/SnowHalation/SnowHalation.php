@@ -14,6 +14,10 @@ use pocketmine\utils\Config;
 use pocketmine\command\CommandSender;
 use pocketmine\command\Command;
 use pocketmine\utils\TextFormat;
+use pocketmine\event\level\ChunkLoadEvent;
+use pocketmine\level\generator\biome\Biome;
+use pocketmine\event\player\PlayerJoinEvent;
+use pocketmine\network\protocol\LevelEventPacket;
 
 class SnowHalation extends PluginBase implements Listener {
 	public $cooltime = 0;
@@ -35,12 +39,28 @@ class SnowHalation extends PluginBase implements Listener {
 		@mkdir ( $this->getDataFolder () );
 		$this->initMessage ();
 		
-		$this->config_File = new Config ( $this->getDataFolder () . "set-up.yml", Config::YAML, [ "enable-snowing" => 1,"enable-sunlight" => 0 ] );
+		$this->config_File = new Config ( $this->getDataFolder () . "set-up.yml", Config::YAML, [ 
+				"enable-snowing" => 1,
+				"enable-sunlight" => 0 
+		] );
 		$this->config = $this->config_File->getAll ();
 		
 		$this->pk = new AddEntityPacket ();
 		$this->pk->type = 81;
-		$this->pk->metadata = [ Entity::DATA_FLAGS => [ Entity::DATA_TYPE_BYTE,0 ],Entity::DATA_SHOW_NAMETAG => [ Entity::DATA_TYPE_BYTE,0 ],Entity::DATA_AIR => [ Entity::DATA_TYPE_SHORT,10 ] ];
+		$this->pk->metadata = [ 
+				Entity::DATA_FLAGS => [ 
+						Entity::DATA_TYPE_BYTE,
+						0 
+				],
+				Entity::DATA_SHOW_NAMETAG => [ 
+						Entity::DATA_TYPE_BYTE,
+						0 
+				],
+				Entity::DATA_AIR => [ 
+						Entity::DATA_TYPE_SHORT,
+						10 
+				] 
+		];
 		$this->getServer ()->getScheduler ()->scheduleRepeatingTask ( new SnowHalationTask ( $this ), 4 );
 		
 		new OutEventListener ( $this );
@@ -54,6 +74,18 @@ class SnowHalation extends PluginBase implements Listener {
 		$this->saveResource ( "messages.yml", false );
 		$this->messagesUpdate ( "messages.yml" );
 		$this->messages = (new Config ( $this->getDataFolder () . "messages.yml", Config::YAML ))->getAll ();
+	}
+	public function onChunkLoadEvent(ChunkLoadEvent $event) {
+		for($x = 0; $x < 16; ++ $x)
+			for($z = 0; $z < 16; ++ $z)
+				$event->getChunk ()->setBiomeId ( $x, $z, Biome::ICE_PLAINS );
+	}
+	public function onPlayerJoinEvent(PlayerJoinEvent $event) {
+		$player = $event->getPlayer ();
+		$pk = new LevelEventPacket ();
+		$pk->evid = 3001;
+		$pk->data = 10000;
+		$player->dataPacket ( $pk );
 	}
 	public function get($var) {
 		if (isset ( $this->messages [$this->getServer ()->getLanguage ()->getLang ()] )) {
@@ -73,7 +105,8 @@ class SnowHalation extends PluginBase implements Listener {
 	}
 	public function onCommand(CommandSender $sender, Command $command, $label, Array $args) {
 		if (strtolower ( $command->getName () == $this->get ( "snow" ) )) {
-			if (! $sender->hasPermission ( "snowhalation" )) return false;
+			if (! $sender->hasPermission ( "snowhalation" ))
+				return false;
 			if (! isset ( $args [0] )) {
 				$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "on-help" ) );
 				$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "off-help" ) );
@@ -90,17 +123,20 @@ class SnowHalation extends PluginBase implements Listener {
 			}
 			switch ($args [0]) {
 				case $this->get ( "enable" ) :
-					if (! $sender->isOp ()) return false;
+					if (! $sender->isOp ())
+						return false;
 					$this->config ["enable-snowing"] = 1;
 					$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "snow-enabled" ) );
 					break;
 				case $this->get ( "disable" ) :
-					if (! $sender->isOp ()) return false;
+					if (! $sender->isOp ())
+						return false;
 					$this->config ["enable-snowing"] = 0;
 					$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "snow-disabled" ) );
 					break;
 				case $this->get ( "on" ) :
-					if (isset ( $this->denied [$sender->getName ()] )) unset ( $this->denied [$sender->getName ()] );
+					if (isset ( $this->denied [$sender->getName ()] ))
+						unset ( $this->denied [$sender->getName ()] );
 					$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "snow-on" ) );
 					break;
 				case $this->get ( "off" ) :
@@ -108,17 +144,20 @@ class SnowHalation extends PluginBase implements Listener {
 					$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "snow-off" ) );
 					break;
 				case $this->get ( "heavysnow" ) :
-					if (! $sender->isOp ()) return false;
+					if (! $sender->isOp ())
+						return false;
 					$this->heavySnow ( $sender );
 					$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "heavysnow-success" ) );
 					break;
 				case $this->get ( "heatwave" ) :
-					if (! $sender->isOp ()) return false;
+					if (! $sender->isOp ())
+						return false;
 					$this->heatwave ( $sender );
 					$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "heatwave-success" ) );
 					break;
 				case $this->get ( "sunlight" ) :
-					if (! $sender->isOp ()) return false;
+					if (! $sender->isOp ())
+						return false;
 					if ($this->config ["enable-sunlight"] == 0) {
 						$this->config ["enable-sunlight"] = 1;
 						$sender->sendMessage ( TextFormat::DARK_AQUA . $this->get ( "sunlight-on-1" ) );
@@ -131,8 +170,10 @@ class SnowHalation extends PluginBase implements Listener {
 					}
 					break;
 				case $this->get ( "snowworld" ) :
-					if (! $sender instanceof Player) return false;
-					if (! $sender->isOp ()) return false;
+					if (! $sender instanceof Player)
+						return false;
+					if (! $sender->isOp ())
+						return false;
 					if (isset ( $this->config ["world"] [$sender->getLevel ()->getFolderName ()] )) {
 						if ($this->config ["world"] [$sender->getLevel ()->getFolderName ()]) {
 							$this->config ["world"] [$sender->getLevel ()->getFolderName ()] = false;
@@ -167,7 +208,8 @@ class SnowHalation extends PluginBase implements Listener {
 		if (! $this->checkEnableSnowing ()) {
 			if ($this->checkEnableSunLight ()) {
 				foreach ( $this->getServer ()->getOnlinePlayers () as $player ) {
-					if (! $player->spawned or isset ( $this->denied [$player->getName ()] )) continue;
+					if (! $player->spawned or isset ( $this->denied [$player->getName ()] ))
+						continue;
 					$x = mt_rand ( $player->x - 15, $player->x + 15 );
 					$z = mt_rand ( $player->z - 15, $player->z + 15 );
 					
@@ -182,9 +224,11 @@ class SnowHalation extends PluginBase implements Listener {
 			return;
 		}
 		foreach ( $this->getServer ()->getOnlinePlayers () as $player ) {
-			if (! $player->spawned or isset ( $this->denied [$player->getName ()] )) continue;
+			if (! $player->spawned or isset ( $this->denied [$player->getName ()] ))
+				continue;
 			if (isset ( $this->config ["world"] [$player->getLevel ()->getFolderName ()] )) {
-				if (! $this->config ["world"] [$player->getLevel ()->getFolderName ()]) continue;
+				if (! $this->config ["world"] [$player->getLevel ()->getFolderName ()])
+					continue;
 			}
 			$this->createSnow ( $player );
 		}
@@ -199,15 +243,6 @@ class SnowHalation extends PluginBase implements Listener {
 		$x = mt_rand ( $player->x - 15, $player->x + 15 );
 		$z = mt_rand ( $player->z - 15, $player->z + 15 );
 		$y = $player->getLevel ()->getHighestBlockAt ( $x, $z );
-		/*
-		if ($y <= $player->y) {
-			$this->pk->eid = Entity::$entityCount ++;
-			$this->pk->x = $x;
-			$this->pk->y = $player->y + 13;
-			$this->pk->z = $z;
-			$player->dataPacket ( $this->pk );
-		}
-		*/
 		if (! $this->checkEnableSunLight ()) {
 			if ($this->cooltime < 11) {
 				$this->cooltime ++;
@@ -225,21 +260,26 @@ class SnowHalation extends PluginBase implements Listener {
 	public function createSnowLayer(Position $pos) {
 		$this->cooltime --;
 		
-		if ($pos == null) return;
+		if ($pos == null)
+			return;
 		
 		$down = $pos->getLevel ()->getBlock ( $pos );
-		if (! $down->isSolid ()) return;
-		if ($down->getId () == Block::GRAVEL or $down->getId () == Block::COBBLESTONE or $down->getId () == 32 or $down->getId () == Block::DIAMOND_BLOCK or $down->getId () == Block::WATER or $down->getId () == Block::WOOL or $down->getId () == 44 or $down->getId () == Block::FENCE or $down->getId () == Block::STONE_BRICK_STAIRS or $down->getId () == 43 or $down->getId () == Block::FARMLAND) return;
+		if (! $down->isSolid ())
+			return;
+		if ($down->getId () == Block::GRAVEL or $down->getId () == Block::COBBLESTONE or $down->getId () == 32 or $down->getId () == Block::DIAMOND_BLOCK or $down->getId () == Block::WATER or $down->getId () == Block::WOOL or $down->getId () == 44 or $down->getId () == Block::FENCE or $down->getId () == Block::STONE_BRICK_STAIRS or $down->getId () == 43 or $down->getId () == Block::FARMLAND)
+			return;
 		
 		$up = $pos->getLevel ()->getBlock ( $pos->add ( 0, 1, 0 ) );
-		if ($up->getId () != Block::AIR) return;
+		if ($up->getId () != Block::AIR)
+			return;
 		
 		$pos->getLevel ()->setBlock ( $up, Block::get ( Item::SNOW_LAYER ), 0, false );
 	}
 	public function destructSnowLayer(Position $pos) {
 		$this->cooltime --;
-		if ($pos == null) return;
-		if ($pos->getLevel ()->getBlockIdAt($pos->x, $pos->y, $pos->z) == Block::SNOW_LAYER){
+		if ($pos == null)
+			return;
+		if ($pos->getLevel ()->getBlockIdAt ( $pos->x, $pos->y, $pos->z ) == Block::SNOW_LAYER) {
 			$pos->getLevel ()->setBlock ( $pos, Block::get ( Block::AIR ), 0, false );
 		}
 	}
