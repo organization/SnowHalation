@@ -2,7 +2,9 @@ name: SnowHalation
 main: ifteam\SnowHalation\SnowHalation
 version: 1.8-alpha
 author: hm
-api: [2.0.0]
+api:
+- 1.13.0
+- 2.0.0
 
 commands:
  snow:
