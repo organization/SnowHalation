@@ -1,0 +1,1 @@
+ $event->getChunk ()->setBiomeId ( $x, $z, Biome::ICE_PLAINS ); #TAIGA
