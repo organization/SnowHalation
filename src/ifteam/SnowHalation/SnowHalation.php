@@ -45,6 +45,8 @@ class SnowHalation extends PluginBase implements Listener {
 		] );
 		$this->config = $this->config_File->getAll ();
 		
+		// @Deprecated
+		/*
 		$this->pk = new AddEntityPacket ();
 		$this->pk->type = 81;
 		$this->pk->metadata = [ 
@@ -61,6 +63,7 @@ class SnowHalation extends PluginBase implements Listener {
 						10 
 				] 
 		];
+		*/
 		$this->getServer ()->getScheduler ()->scheduleRepeatingTask ( new SnowHalationTask ( $this ), 4 );
 		
 		new OutEventListener ( $this );
